@@ -1,15 +1,79 @@
-const dotenv = require("dotenv");
-const app  = require("./app.js");
-const databaseConnection = require("./db/index.js");
+const express = require("express");
+const bodyParser = require("body-parser");
+const cors = require("cors");
+const connectToMongo = require("./db");
+const userRoutes = require("./routes/userRoutes");
+const projectRoutes = require("./routes/projectRoutes");
+const taskRoutes = require("./routes/taskRoutes");
+const cookieParser = require("cookie-parser");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const app = express();
+const port =  process.env.PORT || 5005;
 
-dotenv.config();
 
-databaseConnection()
-.then( () => {
-    app.listen( process.env.PORT || 5000 , () => {
-        console.log( `Server is running on port : ${process.env.PORT}` );
-    } )
-} )
-.catch( (error) => {
-    console.log( "Mongodb connection faild" , error );
-} );
+
+
+
+
+// MIDDLEWARES
+connectToMongo();
+
+app.use(express.json());
+app.use(cookieParser());
+app.use(express.urlencoded({ extended: true }));
+app.use(bodyParser.json());
+app.use(helmet());
+app.use(
+  helmet.crossOriginResourcePolicy({
+    policy: "cross-origin",
+  })
+);
+
+
+
+
+// ----------------------------------Define a custom morgan format ----------------------------------------
+morgan.token("color-status", (req, res) => {
+  const status = res.statusCode;
+  let color;
+  if (status >= 500) {
+    color = "\x1b[31m";
+  } else if (status >= 400) {
+    color = "\x1b[33m";
+  } else if (status >= 300) {
+    color = "\x1b[36m";
+  } else {
+    color = "\x1b[32m";
+  }
+  return color + status + "\x1b[0m";
+});
+
+const customFormat = ":method :url :color-status :response-time ms";
+
+
+app.use(morgan(customFormat));
+
+
+app.use(cors());
+
+
+
+
+// Routes Middleware
+app.use("/user" , userRoutes)
+app.use("/project" , projectRoutes)
+app.use("/task" ,taskRoutes)
+
+// O5sjrqzt4ioURKou
+
+
+
+
+// ROUTES
+app.get("/", (req, res) => {
+  res.send("Home Page");
+});
+app.listen(port, () => {
+  console.log("Server Started on", port);
+});
